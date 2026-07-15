@@ -22,3 +22,18 @@ Every prompt given to Cursor / Claude Code, with a one-line note on what changed
 - Kept `app/prompts.py` verbatim as written.
 
 **Open question:** spec pins `claude-sonnet-4-6`. `claude-sonnet-5` is now available and is the current Sonnet. Left as specced; revisit.
+
+### 2026-07-16 — Prompt 2 (model upgrade)
+
+> okay do that
+
+(i.e. switch `claude-sonnet-4-6` → `claude-sonnet-5`, resolving the open question above.)
+
+**What changed after:**
+- `MODEL = "claude-sonnet-5"`. Better judgment on the core task — reading an answer and probing its weakest part.
+- Added `thinking={"type": "disabled"}`. Sonnet 5 runs adaptive thinking by default when `thinking` is omitted, but `stream.text_stream` yields *text* deltas only — so thinking time would surface as a dead pause with no output. The alternative (`display: "summarized"`) would stream reasoning to the user and break the "never break role" rule in `prompts.py`.
+- `max_tokens` 1024 → 2048 (`MAX_TOKENS` constant). Sonnet 5's tokenizer counts ~30% more tokens for the same text, and the feedback block (2 strengths + 2 gaps + 3-4 sentence rewrite) is the longest output the app produces. 1024 risked truncating it mid-rewrite.
+
+**Verified:** request shape returns 401 (auth) rather than 400 (validation) against a dummy key, so the model ID + `thinking` param are accepted server-side. Live output still unverified — needs a real key.
+
+**Watch on first real run:** if answers feel shallower than expected, the lever is re-enabling adaptive thinking and handling the pause in the UI (e.g. a "thinking..." indicator), not prompt patching.

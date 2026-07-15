@@ -10,7 +10,8 @@ load_dotenv()
 client = AsyncAnthropic()
 app = FastAPI()
 
-MODEL = "claude-sonnet-4-6"
+MODEL = "claude-sonnet-5"
+MAX_TOKENS = 2048
 
 
 @app.get("/health")
@@ -29,8 +30,11 @@ async def chat(req: Request):
         try:
             async with client.messages.stream(
                 model=MODEL,
-                max_tokens=1024,
+                max_tokens=MAX_TOKENS,
                 system=system,
+                # text_stream yields text deltas only, so adaptive thinking
+                # would stall output with no visible progress.
+                thinking={"type": "disabled"},
                 messages=messages,
             ) as stream:
                 async for text in stream.text_stream:

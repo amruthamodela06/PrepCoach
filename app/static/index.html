@@ -1,0 +1,99 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Interview Prep Coach</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+    #log { border: 1px solid #ccc; border-radius: 6px; padding: 1rem; min-height: 300px; white-space: pre-wrap; }
+    .turn { margin-bottom: 1rem; }
+    .who { font-weight: 600; font-size: 0.85rem; color: #666; }
+    form { display: flex; gap: 0.5rem; margin-top: 1rem; }
+    #input { flex: 1; padding: 0.5rem; }
+    button, select { padding: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>Interview Prep Coach</h1>
+  <label>Role:
+    <select id="role">
+      <option value="swe">Software Engineer</option>
+      <option value="data">Data Science</option>
+      <option value="pm">Product Manager</option>
+    </select>
+  </label>
+  <button id="start">Start interview</button>
+
+  <div id="log"></div>
+
+  <form id="form">
+    <input id="input" placeholder="Your answer..." autocomplete="off">
+    <button type="submit">Send</button>
+  </form>
+
+<script>
+const log = document.getElementById('log');
+const form = document.getElementById('form');
+const input = document.getElementById('input');
+const roleSel = document.getElementById('role');
+let messages = [];
+
+function addTurn(who) {
+  const div = document.createElement('div');
+  div.className = 'turn';
+  div.innerHTML = `<div class="who">${who}</div><div class="body"></div>`;
+  log.appendChild(div);
+  return div.querySelector('.body');
+}
+
+async function send(userText) {
+  messages.push({ role: 'user', content: userText });
+  addTurn('You').textContent = userText;
+  const out = addTurn('Interviewer');
+
+  const res = await fetch('/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role: roleSel.value, messages }),
+  });
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = '', full = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const lines = buf.split('\n\n');
+    buf = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const payload = line.slice(6);
+      if (payload === '[DONE]') continue;
+      const obj = JSON.parse(payload);
+      if (obj.error) { out.textContent += `\n[error] ${obj.error}`; continue; }
+      full += obj.text;
+      out.textContent = full;
+      log.scrollTop = log.scrollHeight;
+    }
+  }
+  messages.push({ role: 'assistant', content: full });
+}
+
+document.getElementById('start').onclick = () => {
+  messages = [];
+  log.innerHTML = '';
+  send('Start the interview.');
+};
+
+form.onsubmit = (e) => {
+  e.preventDefault();
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  send(text);
+};
+</script>
+</body>
+</html>

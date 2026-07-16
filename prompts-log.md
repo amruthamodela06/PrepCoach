@@ -37,3 +37,25 @@ Every prompt given to Cursor / Claude Code, with a one-line note on what changed
 **Verified:** request shape returns 401 (auth) rather than 400 (validation) against a dummy key, so the model ID + `thinking` param are accepted server-side. Live output still unverified — needs a real key.
 
 **Watch on first real run:** if answers feel shallower than expected, the lever is re-enabling adaptive thinking and handling the pause in the UI (e.g. a "thinking..." indicator), not prompt patching.
+
+### 2026-07-17 — Prompt 3 (drop paid Claude for free backends: Groq + Ollama)
+
+> isnt there a free tier one? ... 5 dollars means almost 500 rupees ... can we also use ollama?
+
+Anthropic has no free tier and Max/Pro don't grant API credits, so for a submission-only project we moved off Claude to zero-cost backends. Groq (free cloud key, no card) and Ollama (fully local, no key) are both OpenAI-compatible.
+
+**What changed after:**
+- `anthropic` -> `openai` in requirements. One SDK (`AsyncOpenAI`) serves both providers by swapping `base_url`; no need for separate groq/ollama SDKs.
+- Added a `PROVIDERS` registry + `PROVIDER` env var in `main.py`. `groq` -> api.groq.com, needs `GROQ_API_KEY`; `ollama` -> localhost:11434, no key. `MODEL` env var overrides the per-provider default.
+- System prompt moved from a top-level `system=` param into the first message of the array (`{"role":"system",...}`) — OpenAI/Groq/Ollama style. `prompts.py` itself unchanged.
+- Dropped the Anthropic-only `thinking={"type":"disabled"}` param.
+- `/health` now reports the active `provider` and `model` — makes "which backend am I actually hitting" a one-curl check.
+- Ollama `default_model` set to `qwen2.5-coder:7b-instruct` because that's what's already pulled on this machine (runs out of the box). Overridable via `MODEL`.
+- Added `.env.example` documenting both providers and the model knobs.
+
+**Verified (finally, for real — no key, no cost):**
+- Both provider configs import.
+- Groq path: clean `data: {"error":"AuthenticationError: 401..."}` on a dummy key — SSE framing correct, request shape accepted.
+- **Ollama path: full end-to-end stream through `qwen2.5-coder:7b-instruct`.** Timestamped the chunks — they arrive ~100ms apart, progressively, NOT in one burst. This is the Day 1 streaming gate, passed. Model asked exactly one question + a project-depth probe (prompt behaving).
+
+**Prompt-tuning note for later:** on this run the model opened with "Hi there! I'm excited to talk..." — warmer than `prompts.py`'s "Be direct. Do not praise weak answers." Smaller local models follow negative/tone instructions less tightly than Claude did. Fix is in `prompts.py` (stronger framing / few-shot), not the backend.

@@ -80,3 +80,17 @@ Decided to pay for Anthropic credits. Rather than revert the free backends, adde
 - Ollama path: still streams for real after the refactor (regression check passed).
 
 **Workflow from here:** iterate `prompts.py` on `PROVIDER=ollama` (free, fast), switch to `PROVIDER=anthropic` for real answers / submission. Tune against Groq's 70B when possible — closer to Claude's instruction-following than the local 7B.
+
+### 2026-07-20 — Prompt 5 (strengthen prompts.py against warm opening)
+
+> yeah strenghten the prompts.py
+
+Rewrote `_BASE` to fix the "Hi there! I'm excited..." opening and make the interview loop a hard state machine. Feedback format + role strings unchanged (graded structure kept).
+
+**What changed after:**
+- Split `_BASE` into CADENCE / TONE / BOUNDARIES sections.
+- CADENCE spells out the 3-step loop (question -> one follow-up -> feedback -> next) and explicitly forbids feedback-before-follow-up and skipping the follow-up.
+- TONE: "open with the first question and nothing else"; banned filler ("Great question", "I'm excited", "welcome"); praise only if genuinely strong, and probe anyway; questions capped at 1-3 sentences.
+- BOUNDARIES: stay in character, no fourth-wall, don't answer own questions / coach mid-answer.
+
+**Verified on Ollama 7B:** SWE now opens with a bare question, no greeting (was "Hi there! I'm excited..."). PM still adds a small "Let's dive right in" lead-in — a small-model artifact; Claude should honor "first question and nothing else" more tightly. Net: materially stronger, re-check on Claude once the key is in.

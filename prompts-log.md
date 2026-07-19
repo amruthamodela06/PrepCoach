@@ -59,3 +59,24 @@ Anthropic has no free tier and Max/Pro don't grant API credits, so for a submiss
 - **Ollama path: full end-to-end stream through `qwen2.5-coder:7b-instruct`.** Timestamped the chunks — they arrive ~100ms apart, progressively, NOT in one burst. This is the Day 1 streaming gate, passed. Model asked exactly one question + a project-depth probe (prompt behaving).
 
 **Prompt-tuning note for later:** on this run the model opened with "Hi there! I'm excited to talk..." — warmer than `prompts.py`'s "Be direct. Do not praise weak answers." Smaller local models follow negative/tone instructions less tightly than Claude did. Fix is in `prompts.py` (stronger framing / few-shot), not the backend.
+
+### 2026-07-20 — Prompt 4 (add Claude back as a third provider, make it default)
+
+> alright I am going to use claude only I will pay the 5 dollars for the credits and will give you an api key
+
+Decided to pay for Anthropic credits. Rather than revert the free backends, added Claude as a third provider so the free local Ollama loop stays available for prompt iteration.
+
+**What changed after:**
+- `anthropic` added back to requirements (alongside `openai`).
+- `main.py`: `PROVIDERS` now has `anthropic` (default), `groq`, `ollama`. Extracted a `stream_text()` helper that branches: Claude uses the native Anthropic SDK (`messages.stream` + `text_stream`, `thinking` disabled); groq/ollama share the `AsyncOpenAI` client. The SSE framing / error handling in `/chat` is provider-agnostic now.
+- Default `PROVIDER=anthropic`, default model `claude-sonnet-5`.
+- `.env.example` documents all three.
+
+**Security:** did NOT accept the API key in chat — keys can be logged/cached, and a leaked `sk-ant-` is live billable credit. Key goes in local `.env` (gitignored) only; rotate in Console if ever exposed.
+
+**Verified:**
+- All three provider configs import and resolve the right default model.
+- Anthropic path: clean `data: {"error":"AuthenticationError: 401..."}` on a dummy key — so `claude-sonnet-5` + `thinking` param + request shape all pass server-side validation; only a real key is missing.
+- Ollama path: still streams for real after the refactor (regression check passed).
+
+**Workflow from here:** iterate `prompts.py` on `PROVIDER=ollama` (free, fast), switch to `PROVIDER=anthropic` for real answers / submission. Tune against Groq's 70B when possible — closer to Claude's instruction-following than the local 7B.

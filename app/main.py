@@ -1,10 +1,11 @@
 import os
+import re
 import json
 from fastapi import FastAPI, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
-from app.prompts import SYSTEM_PROMPTS
+from app.prompts import SYSTEM_PROMPTS, SCORING_PROMPTS
 
 load_dotenv()
 
@@ -39,6 +40,7 @@ if PROVIDER not in PROVIDERS:
 _cfg = PROVIDERS[PROVIDER]
 MODEL = os.environ.get("MODEL", _cfg["default_model"])
 MAX_TOKENS = 2048
+SCORE_MAX_TOKENS = 2000
 
 if PROVIDER == "anthropic":
     from anthropic import AsyncAnthropic
@@ -81,6 +83,64 @@ async def stream_text(system, messages):
                 yield text
 
 
+async def complete_text(system, messages, max_tokens):
+    """Non-streaming completion from the active provider; returns full text."""
+    if PROVIDER == "anthropic":
+        resp = await client.messages.create(
+            model=MODEL,
+            max_tokens=max_tokens,
+            system=system,
+            thinking={"type": "disabled"},
+            messages=messages,
+        )
+        return "".join(
+            block.text for block in resp.content
+            if getattr(block, "type", None) == "text"
+        )
+    resp = await client.chat.completions.create(
+        model=MODEL,
+        max_tokens=max_tokens,
+        messages=[{"role": "system", "content": system}, *messages],
+    )
+    return resp.choices[0].message.content or ""
+
+
+def format_transcript(messages):
+    """Render the chat messages as a labeled transcript for the evaluator."""
+    lines = []
+    for m in messages:
+        speaker = "Interviewer" if m.get("role") == "assistant" else "Candidate"
+        lines.append(f"{speaker}: {m.get('content', '')}")
+    return "\n\n".join(lines)
+
+
+def strip_json_fences(text):
+    """Best-effort recovery of a JSON object from a fenced/prose-wrapped reply."""
+    t = text.strip()
+    fenced = re.match(r"^```(?:json)?\s*(.*?)\s*```$", t, re.DOTALL)
+    if fenced:
+        t = fenced.group(1).strip()
+    start, end = t.find("{"), t.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        t = t[start:end + 1]
+    return t
+
+
+def parse_scorecard(raw):
+    """Parse the model's reply; on failure retry once after fence-stripping.
+
+    Returns the parsed object, or None if both attempts fail.
+    """
+    try:
+        return json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        pass
+    try:
+        return json.loads(strip_json_fences(raw))
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+
 app = FastAPI()
 
 
@@ -109,6 +169,35 @@ async def chat(req: Request):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@app.post("/score")
+async def score(req: Request):
+    body = await req.json()
+    role = body.get("role", "swe")
+    messages = body.get("messages", [])
+    system = SCORING_PROMPTS.get(role, SCORING_PROMPTS["swe"])
+
+    # Pass the transcript as one user turn so the request is a clean
+    # evaluation (starts and ends on user), independent of who spoke last.
+    eval_messages = [{
+        "role": "user",
+        "content": (
+            "Here is the full interview transcript:\n\n"
+            + format_transcript(messages)
+            + "\n\nEvaluate the candidate now. Output only the JSON object."
+        ),
+    }]
+
+    try:
+        raw = await complete_text(system, eval_messages, SCORE_MAX_TOKENS)
+    except Exception:
+        return JSONResponse(status_code=502, content={"error": "scoring_failed"})
+
+    data = parse_scorecard(raw)
+    if data is None:
+        return JSONResponse(status_code=502, content={"error": "scoring_failed"})
+    return data
 
 
 app.mount("/", StaticFiles(directory="app/static", html=True), name="static")

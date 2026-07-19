@@ -94,3 +94,30 @@ Rewrote `_BASE` to fix the "Hi there! I'm excited..." opening and make the inter
 - BOUNDARIES: stay in character, no fourth-wall, don't answer own questions / coach mid-answer.
 
 **Verified on Ollama 7B:** SWE now opens with a bare question, no greeting (was "Hi there! I'm excited..."). PM still adds a small "Let's dive right in" lead-in — a small-model artifact; Claude should honor "first question and nothing else" more tightly. Net: materially stronger, re-check on Claude once the key is in.
+
+---
+
+## Day 2 — Interview scoring (backend only)
+
+Split of work: frontend (scorecard view) is on a separate branch by a teammate. This repo/branch does the **backend** — `POST /score` + scoring prompts.
+
+### 2026-07-20 — Prompt 6 (POST /score endpoint)
+
+> Add an interview scoring feature ... BACKEND — new endpoint POST /score ... [full spec: request shape, load scoring prompt by role, non-streaming Claude, force JSON, parse w/ one fence-strip retry, 502 on failure, required JSON shape]
+
+**What changed after:**
+- `prompts.py`: added `SCORING_PROMPTS` (per role). Single `_SCORE_BASE` template with the exact required JSON shape + band rules + "output only JSON"; per-role `__ROLE_LABEL__` / `__DIMENSIONS__` filled via `str.replace` (avoids escaping every brace in the JSON example). Dimensions per role: SWE = Technical Depth / Problem Solving / System Design / Communication; DS = Statistical Reasoning / Data & SQL / Experiment Design / Communication; PM = Product Sense / Prioritization / Metrics / Structured Thinking.
+- `main.py`: added `complete_text()` (non-streaming, provider-aware — mirrors `stream_text()`), `format_transcript()`, `strip_json_fences()`, `parse_scorecard()`, and the `POST /score` endpoint.
+- **Transcript is passed as ONE user turn**, not as the raw messages array. An evaluation request should start and end on `user`; replaying the transcript's own roles would end on `assistant` (interviewer) and ask Claude to *continue* the interview rather than judge it. So `/score` builds `[{role:user, content: "<transcript>\n\nEvaluate..."}]`.
+- Parse path exactly per spec: `json.loads(raw)`; on failure, one retry after `strip_json_fences()` (strips ```json fences AND slices to the outermost `{...}` for prose-wrapped replies); second failure -> HTTP 502 `{"error":"scoring_failed"}`. Model-call exceptions (auth, timeout) also -> 502 same body.
+
+**Deviations from spec (flagged):**
+- Spec says model `claude-sonnet-4-6`; `/score` instead uses the active provider's `MODEL` (default `claude-sonnet-5` on anthropic) for consistency with the Day-1 `/chat` upgrade and to allow free local testing on Ollama. Set `MODEL=claude-sonnet-4-6` in `.env` to match the spec exactly.
+- `max_tokens` = 2000 per spec (`SCORE_MAX_TOKENS`). Watch: with Sonnet 5's tokenizer and 5 ideal answers this can truncate; truncation -> invalid JSON -> 502 -> frontend retry. Bump if it bites.
+
+**Verified (free, on Ollama):**
+- Helper unit tests: clean JSON, fenced JSON, prose-wrapped JSON all parse; garbage -> `None` (-> 502); transcript formatting correct.
+- Real end-to-end `POST /score` (tested on `qwen2.5-coder:3b-instruct` for speed; 7B/Claude same code path): returned valid JSON on first parse, exact schema — `overall_score:65 / band:"Fair"` (band range consistent), 4 correctly-named dimensions, 3 improvements each with what+where, ideal_answers present. Calibration sane (candidate who "hoped collisions wouldn't happen" -> Problem Solving 40, Communication 30).
+- Note: 3B produced 3 ideal_answers for ~5 questions (under the "one per question" instruction). Small-model instruction-following gap; Claude/Groq-70B expected to comply. Frontend is specced to handle missing/extra fields gracefully.
+
+**Test-harness gotcha (not a code bug):** Git Bash `/tmp` ≠ Windows `python.exe` `/tmp`, so a file curl wrote in bash-/tmp wasn't visible to the Windows Python validator (resolved to `C:\tmp`). Fixed by piping the response over stdin instead of a temp file.

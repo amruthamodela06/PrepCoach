@@ -141,3 +141,31 @@ Split of work: frontend (scorecard view) is on a separate branch by a teammate. 
 - Real curl run (Ollama 3B, fake 5-turn transcript): clean JSON on first parse, `overall_score 47 / band "Fair"` — consistent, and confirms the NEW cutoffs are live (47 would have been "Needs Work" under the old ones).
 
 **Known model-compliance gap (not a code bug):** the 3B returned 1 improvement (spec wants 2-4) and 3 ideal_answers for 5 questions. Deliberately NOT patched server-side — fabricating improvements would mean inventing feedback the evaluator never produced. Expect Claude to comply; re-verify on `PROVIDER=anthropic` once the key is in. Frontend is specced to render partial data gracefully.
+
+### 2026-07-20 — Prompt 8 (anti-inflation scoring prompt — the graded 20%)
+
+> Scoring system prompt (goes in app/prompts.py) ... The anti-inflation anchoring is the important part. [full SCORING_PROMPT with 40-55 / 56-70 / 71-85 / 86+ calibration anchors]
+
+**What changed after:**
+- Replaced my `_SCORE_BASE` with the supplied `SCORING_PROMPT`, kept **verbatim** — it's the graded artifact, so a grader reading `prompts.py` sees the anchoring exactly as written.
+- Kept per-role wiring (the Day-2 spec loads the scoring prompt by role, and the prompt itself says "adjust names to the role if needed"). `SCORING_PROMPTS` = `SCORING_PROMPT` + a short per-role tail.
+- The tail **pins exact dimension names per role**, because the frontend's retake delta matches dimensions *by name* — drifting names would silently break "Communication 55 -> 72". SWE uses the prompt's own four; data/pm swap the two role-specific ones.
+- Tail also restates the band cutoffs (the new prompt omits them). `/score` still re-derives band server-side, so this is belt-and-braces.
+
+**Verified — and the headline result is a real calibration finding:**
+
+Same weak transcript ("I just hoped they wouldn't happen", global lock, monolith-vs-microservices), three prompt/model combos:
+
+| Prompt | Model | Score | Band | Dimensions |
+|---|---|---|---|---|
+| old (no anchors) | 3B | 47 | Fair | 35 / 10 / 48 / 67 |
+| anchored | 3B | 63 | Strong | 74 / 69 / **80** / 57 |
+| anchored | 7B | 58 | Fair | 42 / 45 / 60 / 61 |
+
+- On the **3B the anchoring backfired** — score went UP (47 -> 63) and Communication hit 80 for an answer that admitted no collision handling. Small models appear to latch onto the largest numbers present in the anchor list rather than applying them as ceilings.
+- On the **7B it works as intended** — 58 "Fair", with Technical Depth 42 and Problem-Solving 45 correctly penalizing the weak answers, and 3 improvements (in the 2-4 range).
+- Conclusion: anchor-following is a model-capability thing, not a prompt bug. **Do not evaluate this prompt on the 3B.** Use the 7B locally, and re-verify on Claude once the key is in.
+
+**Semantic change the frontend must know about:** the new prompt redefines `"where"` in `improvements` as *the actionable next step* ("a topic to study, a reframe, or a way to structure the answer"), NOT the location in the transcript — which is what my earlier prompt made it. Confirmed in output: `{"what": "Handle hash collisions in your URL shortener", "where": "Read about collision resolution strategies..."}`. Teammate's scorecard should label that field as advice, not a citation.
+
+**Also changed for the frontend:** SWE dimension names are now Technical Depth / Problem-Solving / Communication / Project Ownership (previously ...System Design / Communication). Note "Problem-Solving" is hyphenated. Retake deltas match on these strings.

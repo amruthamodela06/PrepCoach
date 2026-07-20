@@ -44,60 +44,66 @@ SYSTEM_PROMPTS = {
 
 
 # --- Scoring (used by POST /score) ---------------------------------------
-# The evaluator sees the full transcript and returns a scorecard as a single
-# JSON object. Placeholders (__ROLE_LABEL__ / __DIMENSIONS__) are filled per
-# role via str.replace to avoid escaping every brace in the JSON example.
-_SCORE_BASE = """You are an expert interview evaluator. You are given the full \
-transcript of a mock __ROLE_LABEL__ interview between an interviewer and a \
-candidate. Assess ONLY the candidate's performance, based strictly on what the \
-candidate actually said in the transcript.
+# Anti-inflation anchoring is the point of this prompt: without explicit score
+# anchors, models cluster everything in the 70-85 "pretty good" range and the
+# scorecard stops discriminating between candidates.
+SCORING_PROMPT = """You are a strict, experienced interviewer scoring a completed mock interview transcript for a new-grad candidate.
 
-Return your evaluation as a SINGLE JSON object and NOTHING ELSE. No prose, no \
-commentary, no markdown code fences. The output must start with '{' and end \
-with '}'.
+Score critically. Do NOT inflate. Calibration anchors:
+- 40-55 is a typical new-grad answer with real gaps.
+- 56-70 is solid and hireable.
+- 71-85 is genuinely strong; rare.
+- 86+ is exceptional; award almost never.
+Most candidates should land in the 45-65 range overall. If you are scoring above 75, you must have specific transcript evidence for it.
 
-The JSON object must have exactly these keys:
+Base every score and comment ONLY on what the candidate actually said in the transcript. Quote or reference their specific answers. Do not reward confident tone over substance. Penalize vague, generic, or buzzword answers.
+
+Score these four dimensions 0-100 (adjust names to the role if needed):
+- Technical Depth
+- Problem-Solving
+- Communication
+- Project Ownership
+
+For improvements: name the specific weak answer ("what") and give a concrete, actionable next step ("where") — a topic to study, a reframe, or a way to structure the answer. No generic advice.
+
+For ideal_answers: for each question asked, write a 3-4 sentence model answer a strong candidate would give.
+
+Output ONLY valid JSON, no markdown, no preamble, in exactly this shape:
 {
-  "overall_score": integer 0-100,
-  "band": one of "Needs Work", "Fair", "Strong", "Excellent",
-  "dimensions": array of EXACTLY 4 objects, each {"name": string, "score": integer 0-100},
-                using these four names in this order: __DIMENSIONS__,
-  "improvements": array of 2 to 4 objects, each {"what": string, "where": string},
-                  where "what" is a concrete thing to improve and "where"
-                  points to the specific question or answer it refers to,
-  "ideal_answers": array of objects, each {"question": string, "ideal": string},
-                   one entry for each distinct question the interviewer asked
-}
+  "overall_score": <int 0-100>,
+  "band": "<Needs Work|Fair|Strong|Excellent>",
+  "dimensions": [{"name": "<str>", "score": <int>}, ...4 items],
+  "improvements": [{"what": "<str>", "where": "<str>"}, ...2-4 items],
+  "ideal_answers": [{"question": "<str>", "ideal": "<str>"}, ...]
+}"""
 
-Rules:
-- Decide "overall_score" FIRST, then derive "band" from it using exactly
-  these cutoffs. The label and the number must never contradict:
-    0-44   -> "Needs Work"
-    45-60  -> "Fair"
-    61-78  -> "Strong"
-    79-100 -> "Excellent"
-- overall_score should roughly track the average of the four dimension scores.
-- Calibrate honestly to the bar for a __ROLE_LABEL__ candidate. Do not inflate.
-  Vague, generic, or unsupported answers score low.
-- Each "ideal" is a concise model answer (3-5 sentences) a strong candidate
-  would give to that question.
-- Never invent answers the candidate did not give. Judge only the transcript."""
-
-_ROLE_LABEL = {
-    "swe": "software engineering",
-    "data": "data science",
-    "pm": "product management",
-}
-
-_SCORE_DIMENSIONS = {
-    "swe": "Technical Depth, Problem Solving, System Design, Communication",
-    "data": "Statistical Reasoning, Data & SQL, Experiment Design, Communication",
-    "pm": "Product Sense, Prioritization, Metrics, Structured Thinking",
+# Per-role tail appended to SCORING_PROMPT. Dimension names are pinned rather
+# than left to the model because the frontend's retake delta matches
+# dimensions by name — drifting names would break "Communication 55 -> 72".
+# Band cutoffs are restated here; /score also re-derives band server-side.
+_ROLE_CONTEXT = {
+    "swe": (
+        "software engineering",
+        "Technical Depth, Problem-Solving, Communication, Project Ownership",
+    ),
+    "data": (
+        "data science",
+        "Statistical Reasoning, Problem-Solving, Communication, Experiment Design",
+    ),
+    "pm": (
+        "product management",
+        "Product Sense, Prioritization, Communication, Structured Thinking",
+    ),
 }
 
 SCORING_PROMPTS = {
-    role: _SCORE_BASE
-    .replace("__ROLE_LABEL__", _ROLE_LABEL[role])
-    .replace("__DIMENSIONS__", _SCORE_DIMENSIONS[role])
-    for role in _ROLE_LABEL
+    role: SCORING_PROMPT + (
+        f"\n\nThis transcript is a {label} interview. Use EXACTLY these four "
+        f"dimension names, in this order: {dims}. Keep them verbatim so scores "
+        "stay comparable across retakes.\n"
+        'Derive "band" from "overall_score" using exactly these cutoffs, so the '
+        'label and the number never contradict: 0-44 "Needs Work", '
+        '45-60 "Fair", 61-78 "Strong", 79-100 "Excellent".'
+    )
+    for role, (label, dims) in _ROLE_CONTEXT.items()
 }

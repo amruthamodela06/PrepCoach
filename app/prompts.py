@@ -70,8 +70,12 @@ The JSON object must have exactly these keys:
 }
 
 Rules:
-- Band must match overall_score: 0-49 "Needs Work", 50-69 "Fair",
-  70-84 "Strong", 85-100 "Excellent".
+- Decide "overall_score" FIRST, then derive "band" from it using exactly
+  these cutoffs. The label and the number must never contradict:
+    0-44   -> "Needs Work"
+    45-60  -> "Fair"
+    61-78  -> "Strong"
+    79-100 -> "Excellent"
 - overall_score should roughly track the average of the four dimension scores.
 - Calibrate honestly to the bar for a __ROLE_LABEL__ candidate. Do not inflate.
   Vague, generic, or unsupported answers score low.

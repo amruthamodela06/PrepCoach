@@ -121,3 +121,23 @@ Split of work: frontend (scorecard view) is on a separate branch by a teammate. 
 - Note: 3B produced 3 ideal_answers for ~5 questions (under the "one per question" instruction). Small-model instruction-following gap; Claude/Groq-70B expected to comply. Frontend is specced to handle missing/extra fields gracefully.
 
 **Test-harness gotcha (not a code bug):** Git Bash `/tmp` ≠ Windows `python.exe` `/tmp`, so a file curl wrote in bash-/tmp wasn't visible to the Windows Python validator (resolved to `C:\tmp`). Fixed by piping the response over stdin instead of a temp file.
+
+### 2026-07-20 — Prompt 7 (Day 4 watch-items: curl-first discipline + band/score consistency)
+
+> Two things to watch on Day 4: (1) Test /score with curl before wiring the UI ... confirm you get clean JSON back ... (2) Band vs score consistency — make the model derive band from overall_score (e.g. <45 Needs Work, 45-60 Fair, 61-78 Strong, 79+ Excellent)
+
+(1) was already satisfied in Prompt 6 — `/score` was curl-tested with a fake transcript before any UI existed, with fenced/prose/garbage parse paths unit-tested.
+
+**What changed after (2):**
+- **New band cutoffs.** Mine were `0-49 / 50-69 / 70-84 / 85+`; spec's are `<45 / 45-60 / 61-78 / 79+`. Updated `_SCORE_BASE` to the spec's, and reworded so the model decides `overall_score` FIRST then derives `band` from it.
+- **Server-side enforcement (went beyond the spec).** Prompt instruction makes contradiction unlikely, not impossible — and the number and label render side by side, so a mismatch is visible garbage. Added `derive_band()` + `normalize_scorecard()` in `main.py`, applied to the parsed payload before returning. The band is now *recomputed* from `overall_score`, so the two can never disagree regardless of what the model emits.
+- `normalize_scorecard()` also clamps `overall_score` to 0-100 and coerces a stringified score (`"72"` -> `72`). If `overall_score` is missing or unparseable it returns the payload untouched — never crashes, never invents a band.
+
+**Verified:**
+- Boundary tests on every cutoff edge: 0/44 -> Needs Work, 45/60 -> Fair, 61/78 -> Strong, 79/100 -> Excellent. All pass.
+- Contradiction correction: model emitting `{score: 65, band: "Excellent"}` is corrected to `"Strong"`.
+- Clamping (`150`->100, `-20`->0/Needs Work), string coercion (`"72"`/Fair -> 72/Strong).
+- Graceful on junk: `{}`, `{overall_score: None}`, `{overall_score:"abc"}`, and a non-dict all pass through without crashing or inventing fields.
+- Real curl run (Ollama 3B, fake 5-turn transcript): clean JSON on first parse, `overall_score 47 / band "Fair"` — consistent, and confirms the NEW cutoffs are live (47 would have been "Needs Work" under the old ones).
+
+**Known model-compliance gap (not a code bug):** the 3B returned 1 improvement (spec wants 2-4) and 3 ideal_answers for 5 questions. Deliberately NOT patched server-side — fabricating improvements would mean inventing feedback the evaluator never produced. Expect Claude to comply; re-verify on `PROVIDER=anthropic` once the key is in. Frontend is specced to render partial data gracefully.

@@ -141,6 +141,36 @@ def parse_scorecard(raw):
         return None
 
 
+# Band cutoffs. The model is instructed to use these, but we re-derive the
+# band server-side so the label can never contradict the number on screen.
+def derive_band(score):
+    if score < 45:
+        return "Needs Work"
+    if score <= 60:
+        return "Fair"
+    if score <= 78:
+        return "Strong"
+    return "Excellent"
+
+
+def normalize_scorecard(data):
+    """Clamp overall_score to 0-100 and force band to match it.
+
+    Leaves the payload untouched if overall_score is missing or unusable —
+    the frontend is expected to render partial data gracefully.
+    """
+    if not isinstance(data, dict):
+        return data
+    try:
+        score = int(data.get("overall_score"))
+    except (TypeError, ValueError):
+        return data
+    score = max(0, min(100, score))
+    data["overall_score"] = score
+    data["band"] = derive_band(score)
+    return data
+
+
 app = FastAPI()
 
 
@@ -197,7 +227,7 @@ async def score(req: Request):
     data = parse_scorecard(raw)
     if data is None:
         return JSONResponse(status_code=502, content={"error": "scoring_failed"})
-    return data
+    return normalize_scorecard(data)
 
 
 app.mount("/", StaticFiles(directory="app/static", html=True), name="static")

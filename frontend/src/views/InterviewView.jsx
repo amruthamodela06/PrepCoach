@@ -39,12 +39,12 @@ export default function InterviewView({ role, difficulty, resume, voiceMode, onC
       setInputValue(base ? `${base} ${text}`.trim() : text)
     },
     onError: (err) => {
-      if (err === 'not-allowed' || err === 'permission-denied') {
-        toast('Mic unavailable — type your answer instead')
-      } else if (err === 'no-speech') {
-        toast("Didn't catch that — try again or type your answer")
-      } else if (err === 'network') {
-        toast('Voice recognition network error — type your answer instead')
+      if (err === 'not-allowed' || err === 'permission-denied' || err === 'service-not-allowed') {
+        toast('Mic blocked — allow microphone access, or type your answer')
+      } else if (err === 'audio-capture') {
+        toast('No microphone found — type your answer instead')
+      } else if (err === 'unstable') {
+        toast('Voice recognition keeps dropping — type your answer instead')
       } else {
         toast('Voice input error — type your answer instead')
       }

@@ -21,6 +21,11 @@ export function useSpeechRecognition({ onResult, onError }) {
   const finalRef = useRef('')
   // Whether the user still intends to be listening (drives auto-restart).
   const wantRef = useRef(false)
+  // Consecutive transient errors with no successful result in between. Any
+  // result resets it; only a sustained streak (genuinely offline/broken) gives
+  // up. A single network blip mid-session recovers silently.
+  const errorStreakRef = useRef(0)
+  const MAX_ERROR_STREAK = 4
 
   useEffect(() => {
     if (!supported) return
@@ -30,6 +35,7 @@ export function useSpeechRecognition({ onResult, onError }) {
     recognition.lang = 'en-US'
 
     recognition.addEventListener('result', (e) => {
+      errorStreakRef.current = 0 // we got audio through — reset the streak
       let interim = ''
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const transcript = e.results[i][0].transcript
@@ -40,12 +46,29 @@ export function useSpeechRecognition({ onResult, onError }) {
     })
 
     recognition.addEventListener('error', (e) => {
-      // A brief silence or an auto-restart abort is transient — let the 'end'
-      // handler restart, and don't surface it to the user as an error.
+      // Fatal: the mic/permission is unusable — stop and tell the user.
+      if (
+        e.error === 'not-allowed' ||
+        e.error === 'service-not-allowed' ||
+        e.error === 'permission-denied' ||
+        e.error === 'audio-capture'
+      ) {
+        wantRef.current = false
+        setListening(false)
+        onErrorRef.current?.(e.error)
+        return
+      }
+      // A pause with no speech is normal — don't count it, just let 'end'
+      // restart the mic.
       if (e.error === 'no-speech' || e.error === 'aborted') return
-      wantRef.current = false
-      setListening(false)
-      onErrorRef.current?.(e.error)
+      // Other errors (e.g. a network blip) are transient: let 'end' restart,
+      // but give up if they keep happening with no successful result between.
+      errorStreakRef.current += 1
+      if (errorStreakRef.current >= MAX_ERROR_STREAK) {
+        wantRef.current = false
+        setListening(false)
+        onErrorRef.current?.('unstable')
+      }
     })
 
     recognition.addEventListener('end', () => {
@@ -75,6 +98,7 @@ export function useSpeechRecognition({ onResult, onError }) {
   const start = () => {
     if (!recognitionRef.current) return
     finalRef.current = '' // fresh session
+    errorStreakRef.current = 0
     wantRef.current = true
     try {
       recognitionRef.current.start()

@@ -189,3 +189,23 @@ Same weak transcript, all combos:
 - **Conclusion: the anti-inflation anchoring is validated on the production model.** This is the scorecard the grader will see.
 
 **One cosmetic thing to verify in the browser:** in the piped curl test one improvement string showed a mangled character where Claude likely emitted an em-dash (`—`) — almost certainly a Windows stdin/console encoding artifact of the test pipe, not the API response (browser renders raw UTF-8 over HTTP). Confirm on the rendered scorecard; if it ever shows there, add `ensure_ascii` handling — but do not assume it's a server bug based on the terminal pipe alone.
+
+---
+
+## Day 5 — Deploy (Render, single service)
+
+Decisions: deploy target = **Render** (free tier, Docker, GitHub-connected); frontend = **served by FastAPI** (teammate's finished UI merges into `app/static`, so one service serves UI + API, no CORS).
+
+### 2026-07-25 — Deploy setup
+
+**What changed:**
+- `requirements.txt`: pinned all direct deps to the tested versions (fastapi 0.139.0, uvicorn[standard] 0.51.0, anthropic 0.116.0, openai 2.45.0, python-dotenv 1.2.2) so a prod build can't pull a surprise breaking release.
+- `Dockerfile`: CMD now binds to `${PORT}` (Render injects it; defaults to 8000 for local `docker run`) via shell form so the var expands, and adds `--proxy-headers --forwarded-allow-ips="*"` since the app runs behind Render's load balancer. Was hardcoded to 8000.
+- `render.yaml`: Blueprint for one Docker web service, `healthCheckPath: /health`, `PROVIDER=anthropic` + `MODEL=claude-sonnet-5` as plain env, `ANTHROPIC_API_KEY` as `sync:false` (set in dashboard, never in git).
+- `.dockerignore`: keeps venv/.git/.env/etc. out of the build context.
+
+**Verified:**
+- Ran the exact prod command (`uvicorn ... --host 0.0.0.0 --port ${PORT} --proxy-headers ...`) with `PORT=9137` injected: binds to the injected port, `/health` 200, `/` serves the static frontend (same origin, 200 text/html), and `X-Forwarded-Proto: https` is accepted. Docker daemon wasn't running locally, so verification is of the runtime command the container executes, not an image build.
+- Build context is clean: `app/` holds no secrets, `.env` is gitignored and .dockerignored.
+
+**Still to do (not code):** (1) merge teammate's finished frontend into `app/static`; (2) in Render dashboard — New > Blueprint > connect repo, then set `ANTHROPIC_API_KEY` secret. Free instances cold-start (~30s) after idle — fine for a demo, worth a mention to the grader.

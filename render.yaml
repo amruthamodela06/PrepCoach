@@ -1,0 +1,16 @@
+# Render Blueprint. In the Render dashboard: New > Blueprint > connect this
+# repo. It creates one web service from the Dockerfile. Set ANTHROPIC_API_KEY
+# (marked sync:false below) in the dashboard — it is never stored in git.
+services:
+  - type: web
+    name: prepcoach
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: PROVIDER
+        value: anthropic
+      - key: MODEL
+        value: claude-sonnet-5
+      - key: ANTHROPIC_API_KEY
+        sync: false

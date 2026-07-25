@@ -169,3 +169,23 @@ Same weak transcript ("I just hoped they wouldn't happen", global lock, monolith
 **Semantic change the frontend must know about:** the new prompt redefines `"where"` in `improvements` as *the actionable next step* ("a topic to study, a reframe, or a way to structure the answer"), NOT the location in the transcript — which is what my earlier prompt made it. Confirmed in output: `{"what": "Handle hash collisions in your URL shortener", "where": "Read about collision resolution strategies..."}`. Teammate's scorecard should label that field as advice, not a citation.
 
 **Also changed for the frontend:** SWE dimension names are now Technical Depth / Problem-Solving / Communication / Project Ownership (previously ...System Design / Communication). Note "Problem-Solving" is hyphenated. Retake deltas match on these strings.
+
+### 2026-07-25 — Verified on real Claude (PROVIDER=anthropic, claude-sonnet-5)
+
+Anthropic credits landed; ran the calibration check the local models couldn't settle. `/health` confirms `provider=anthropic, model=claude-sonnet-5`.
+
+Same weak transcript, all combos:
+
+| Prompt | Model | Score | Band | Counts |
+|---|---|---|---|---|
+| no anchors | 3B | 47 | Fair | — |
+| anchored | 3B | 63 | Strong (inflated) | 2 imp |
+| anchored | 7B | 58 | Fair | 3 imp |
+| anchored | **Claude Sonnet 5** | **47** | **Fair** | **4 imp, 5 ideal** |
+
+- Claude calibrates correctly: dimensions 45 / 42 / 55 / 48, all in the "typical new-grad with real gaps" range; no inflation.
+- Honors counts the local models missed: 4 improvements (spec 2-4) and 5 ideal_answers (one per question).
+- Quotes specific answers as the prompt demands ("I just hoped they wouldn't happen", "I'd put a lock around the whole thing"). band/score consistent, schema valid.
+- **Conclusion: the anti-inflation anchoring is validated on the production model.** This is the scorecard the grader will see.
+
+**One cosmetic thing to verify in the browser:** in the piped curl test one improvement string showed a mangled character where Claude likely emitted an em-dash (`—`) — almost certainly a Windows stdin/console encoding artifact of the test pipe, not the API response (browser renders raw UTF-8 over HTTP). Confirm on the rendered scorecard; if it ever shows there, add `ensure_ascii` handling — but do not assume it's a server bug based on the terminal pipe alone.

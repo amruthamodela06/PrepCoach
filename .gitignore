@@ -3,3 +3,5 @@ __pycache__/
 *.pyc
 venv/
 .venv/
+frontend/node_modules/
+.claude/settings.local.json

@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
-from app.prompts import SYSTEM_PROMPTS, SCORING_PROMPTS
+from app.prompts import SCORING_PROMPTS, build_interview_system
 
 load_dotenv()
 
@@ -183,8 +183,10 @@ def health():
 async def chat(req: Request):
     body = await req.json()
     role = body.get("role", "swe")
+    difficulty = body.get("difficulty", "medium")
+    resume = body.get("resume", "")
     messages = body.get("messages", [])
-    system = SYSTEM_PROMPTS.get(role, SYSTEM_PROMPTS["swe"])
+    system = build_interview_system(role, difficulty, resume)
 
     async def gen():
         try:

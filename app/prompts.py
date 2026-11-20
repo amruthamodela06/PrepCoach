@@ -213,3 +213,13 @@ Given the interviewer's question and the candidate's draft answer:
 1. Preserve the candidate's core facts and technical choices.
 2. Restructure the response for maximum clarity, concrete technical precision, and measurable impact (using STAR for behavioral questions or Problem -> Trade-offs -> Architecture -> Verification for technical questions).
 3. Keep the rewritten answer concise (4-6 sentences) and ready to speak aloud. Output only the improved answer text with no preamble."""
+
+RESUME_ANALYSIS_PROMPT = """You are a senior hiring manager reviewing a candidate's resume prior to a technical interview.
+Analyze the resume for the target role and return ONLY valid JSON in this exact shape:
+{
+  "readiness_score": <int 0-100>,
+  "strong_signals": ["<str>", "<str>"],
+  "probe_areas": ["<str>", "<str>"],
+  "predicted_questions": ["<str>", "<str>", "<str>"]
+}
+Keep each item concise (1 sentence) and grounded strictly in the pasted resume."""

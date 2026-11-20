@@ -67,15 +67,31 @@ _DIFFICULTY = {
 # trust the client). Keeps a runaway paste from bloating every turn's tokens.
 _RESUME_MAX_CHARS = 6000
 
+ROLE_FOCUS_TOPICS = {
+    "swe": ["Data Structures & Algorithms", "System Design", "APIs & Databases", "Debugging & Testing", "Behavioral & Ownership"],
+    "data": ["SQL & Data Wrangling", "A/B Testing & Experimentation", "Machine Learning & Modeling", "Probability & Statistics", "Product Metrics"],
+    "pm": ["Product Sense & Design", "Prioritization & Roadmapping", "Metrics & Root Cause Analysis", "Go-To-Market & Strategy", "Stakeholder Execution"],
+    "devops": ["Kubernetes & Containers", "CI/CD & GitOps", "Observability & SLOs", "Incident Response", "Infrastructure as Code"],
+    "security": ["Threat Modeling", "Web & API Security (OWASP)", "IAM & Cryptography", "Cloud Security Posture", "Incident Containment"],
+}
 
-def build_interview_system(role="swe", difficulty="medium", resume=""):
+
+def build_interview_system(role="swe", difficulty="medium", resume="", focus_topics=None):
     """Compose the interviewer system prompt from role + difficulty + an
-    optional pasted resume. Unknown role/difficulty fall back to defaults;
-    an empty resume adds nothing."""
+    optional pasted resume and optional focus topics. Unknown role/difficulty
+    fall back to defaults; an empty resume adds nothing."""
     parts = [
         SYSTEM_PROMPTS.get(role, SYSTEM_PROMPTS["swe"]),
         _DIFFICULTY.get(difficulty, _DIFFICULTY["medium"]),
     ]
+    if focus_topics and isinstance(focus_topics, list):
+        clean_topics = [str(t).strip()[:80] for t in focus_topics if str(t).strip()][:5]
+        if clean_topics:
+            parts.append(
+                "Focus your interview questions primarily on these selected topics: "
+                + ", ".join(clean_topics)
+                + ". Ensure questions test practical depth in these areas."
+            )
     resume = (resume or "").strip()[:_RESUME_MAX_CHARS]
     if resume:
         parts.append(

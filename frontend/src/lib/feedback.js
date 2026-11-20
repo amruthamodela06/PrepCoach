@@ -41,3 +41,34 @@ export function splitAssistantMessage(text) {
   if (parsed.nextQuestion) blocks.push({ type: 'text', text: parsed.nextQuestion })
   return blocks
 }
+
+const FILLER_REGEX = /\b(um+|uh+|er+|basically|honestly|literally|sort of|kind of|you know)\b/gi
+const METRIC_REGEX = /\b\d+(?:\.\d+)?(?:\s*%|\s*ms|\s*s|\s*x|\s*k|\s*m|\s*gb|\s*mb|\s*rps|\s*qps|\s*users|\s*rows)?\b/i
+const STRUCTURE_REGEX = /\b(because|trade-?off|first|second|resulted in|measured|specifically|for example|bottleneck)\b/i
+
+export function analyzeDraftAnswer(text) {
+  const clean = (text || '').trim()
+  if (!clean) {
+    return { wordCount: 0, speakingSeconds: 0, fillerCount: 0, hasMetrics: false, hasStructure: false, depthLabel: 'Empty' }
+  }
+  const words = clean.split(/\s+/).filter(Boolean)
+  const wordCount = words.length
+  const speakingSeconds = Math.max(1, Math.round((wordCount / 140) * 60))
+  const fillers = clean.match(FILLER_REGEX) || []
+  const fillerCount = fillers.length
+  const hasMetrics = METRIC_REGEX.test(clean)
+  const hasStructure = STRUCTURE_REGEX.test(clean)
+
+  let depthLabel = 'Brief'
+  if (wordCount >= 80) depthLabel = 'Detailed'
+  else if (wordCount >= 35) depthLabel = 'Solid length'
+
+  return {
+    wordCount,
+    speakingSeconds,
+    fillerCount,
+    hasMetrics,
+    hasStructure,
+    depthLabel,
+  }
+}

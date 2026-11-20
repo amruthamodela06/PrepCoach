@@ -207,3 +207,9 @@ Given the latest interview question, provide:
 1. A 1-2 sentence conceptual hint or framework to structure the answer (e.g., STAR method, trade-off axes, bottleneck analysis).
 2. Two key concepts or dimensions the interviewer is looking for.
 Do NOT write out the full answer for the candidate. Keep the total response under 65 words, plain and direct."""
+
+REWRITE_ANSWER_PROMPT = """You are a senior interview coach helping a candidate refine their draft answer before or after an interview turn.
+Given the interviewer's question and the candidate's draft answer:
+1. Preserve the candidate's core facts and technical choices.
+2. Restructure the response for maximum clarity, concrete technical precision, and measurable impact (using STAR for behavioral questions or Problem -> Trade-offs -> Architecture -> Verification for technical questions).
+3. Keep the rewritten answer concise (4-6 sentences) and ready to speak aloud. Output only the improved answer text with no preamble."""

@@ -1229,6 +1229,101 @@ button, textarea, input {
 .score-delta.up { color: var(--success); }
 .score-delta.down { color: var(--danger); }
 
+.scorecard-extremes {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 0.9rem;
+}
+.extreme-pill {
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+}
+.extreme-strong {
+  background: var(--success-light);
+  color: var(--success);
+}
+.extreme-weak {
+  background: var(--warn-light);
+  color: var(--warn);
+}
+
+.breakdown-layout {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.radar-chart-wrap {
+  width: 200px;
+  height: 200px;
+  flex-shrink: 0;
+}
+.radar-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.radar-grid-ring {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.radar-axis-line {
+  stroke: var(--border);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+.radar-polygon-prev {
+  fill: color-mix(in srgb, var(--text-faint) 18%, transparent);
+  stroke: var(--text-faint);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 2;
+}
+.radar-polygon-current {
+  fill: color-mix(in srgb, var(--primary) 24%, transparent);
+  stroke: var(--primary);
+  stroke-width: 2.2;
+}
+.radar-vertex {
+  fill: var(--primary);
+}
+.radar-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  fill: var(--text-muted);
+}
+
+.comm-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+}
+.comm-metric-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.85rem 0.65rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.comm-metric-val {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--primary);
+}
+.comm-metric-lbl {
+  font-size: 0.73rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
 .scorecard-section {
   background: var(--surface);
   border: 1px solid var(--border);

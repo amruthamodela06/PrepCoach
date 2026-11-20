@@ -76,6 +76,54 @@ class TestScoringAndAnalytics(unittest.TestCase):
         self.assertIn("76 / 100", md)
         self.assertIn("Software Engineering", md)
 
+    def test_markdown_study_guide_full_sections(self):
+        scorecard = {
+            "overall_score": 68,
+            "band": "Strong",
+            "strongest_dimension": "Technical Depth",
+            "weakest_dimension": "Communication",
+            "transcript_metrics": {
+                "answer_count": 2,
+                "total_words": 120,
+                "avg_words_per_answer": 60,
+                "quantified_answers": 1,
+                "structured_answers": 2,
+                "filler_count": 0,
+            },
+            "dimensions": [
+                {"name": "Technical Depth", "score": 78, "band": "Strong"},
+                {"name": "Communication", "score": 58, "band": "Fair"},
+            ],
+            "improvements": [
+                {"what": "Vague caching eviction answer", "where": "Review Redis LRU vs LFU policies"}
+            ],
+            "ideal_answers": [
+                {"question": "How does Redis handle memory pressure?", "ideal": "Configure maxmemory-policy with allkeys-lru or volatile-lfu."}
+            ],
+        }
+        messages = [
+            {"role": "user", "content": "I'm ready"},
+            {"role": "assistant", "content": "How does Redis handle memory pressure?"},
+            {"role": "user", "content": "It evicts keys using LRU."},
+        ]
+        md = build_markdown_study_guide("devops", "medium", scorecard, messages)
+        self.assertIn("## Communication Analytics", md)
+        self.assertIn("## Dimension Breakdown", md)
+        self.assertIn("## Actionable Improvement Plan", md)
+        self.assertIn("## Model Answers Reference", md)
+        self.assertIn("## Full Interview Transcript", md)
+        self.assertIn("Review Redis LRU vs LFU policies", md)
+
+    def test_format_transcript_and_strip_fences(self):
+        transcript = format_transcript([
+            {"role": "assistant", "content": "Q1"},
+            {"role": "user", "content": "A1"},
+        ])
+        self.assertIn("Interviewer: Q1", transcript)
+        self.assertIn("Candidate: A1", transcript)
+        raw = "Here is the JSON:\n{\"overall_score\": 60}\nThanks!"
+        self.assertEqual(strip_json_fences(raw), '{"overall_score": 60}')
+
 
 if __name__ == "__main__":
     unittest.main()

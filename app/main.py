@@ -17,6 +17,7 @@ from app.prompts import (
     build_interview_system,
 )
 from app.question_bank import get_questions_for_role
+from app.report_builder import build_markdown_study_guide
 
 load_dotenv()
 
@@ -398,6 +399,17 @@ async def analyze_resume(req: Request):
     if not isinstance(parsed, dict):
         return JSONResponse(status_code=502, content={"error": "analysis_failed"})
     return parsed
+
+
+@app.post("/export-markdown")
+async def export_markdown(req: Request):
+    body = await req.json()
+    role = body.get("role", "swe")
+    difficulty = body.get("difficulty", "medium")
+    scorecard = body.get("scorecard", {})
+    messages = sanitize_messages(body.get("messages", []))
+    markdown = build_markdown_study_guide(role, difficulty, scorecard, messages)
+    return {"markdown": markdown}
 
 
 app.mount("/", StaticFiles(directory="app/static", html=True), name="static")

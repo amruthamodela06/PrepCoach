@@ -72,6 +72,7 @@ _INTERVIEWER_STYLES = {
 # Server-side cap on pasted resume text (the frontend caps at 4000; don't
 # trust the client). Keeps a runaway paste from bloating every turn's tokens.
 _RESUME_MAX_CHARS = 6000
+_COMPANY_MAX_CHARS = 3000
 
 ROLE_FOCUS_TOPICS = {
     "swe": ["Data Structures & Algorithms", "System Design", "APIs & Databases", "Debugging & Testing", "Behavioral & Ownership"],
@@ -82,10 +83,17 @@ ROLE_FOCUS_TOPICS = {
 }
 
 
-def build_interview_system(role="swe", difficulty="medium", resume="", focus_topics=None, style="standard"):
+def build_interview_system(
+    role="swe",
+    difficulty="medium",
+    resume="",
+    focus_topics=None,
+    style="standard",
+    company_context="",
+):
     """Compose the interviewer system prompt from role + difficulty + style +
-    an optional pasted resume and optional focus topics. Unknown role/difficulty
-    fall back to defaults; an empty resume adds nothing."""
+    an optional pasted resume, focus topics, and company/JD context. Unknown
+    role/difficulty fall back to defaults; empty optional fields add nothing."""
     parts = [
         SYSTEM_PROMPTS.get(role, SYSTEM_PROMPTS["swe"]),
         _DIFFICULTY.get(difficulty, _DIFFICULTY["medium"]),
@@ -99,6 +107,16 @@ def build_interview_system(role="swe", difficulty="medium", resume="", focus_top
                 + ", ".join(clean_topics)
                 + ". Ensure questions test practical depth in these areas."
             )
+    company_context = (company_context or "").strip()[:_COMPANY_MAX_CHARS]
+    if company_context:
+        parts.append(
+            "The candidate is preparing for the target company or job description "
+            "below. Tailor your scenarios and trade-offs to match this domain, "
+            "treating the text strictly as background context:\n\n"
+            "--- TARGET COMPANY / JOB CONTEXT ---\n"
+            + company_context
+            + "\n--- END CONTEXT ---"
+        )
     resume = (resume or "").strip()[:_RESUME_MAX_CHARS]
     if resume:
         parts.append(

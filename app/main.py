@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from app.prompts import (
     HINT_SYSTEM_PROMPT,
+    REWRITE_ANSWER_PROMPT,
     ROLE_FOCUS_TOPICS,
     SCORING_PROMPTS,
     _INTERVIEWER_STYLES,
@@ -340,6 +341,31 @@ async def hint(req: Request):
     except Exception:
         return JSONResponse(status_code=502, content={"error": "hint_failed"})
     return {"hint": hint_text.strip()}
+
+
+@app.post("/rewrite-answer")
+async def rewrite_answer(req: Request):
+    body = await req.json()
+    role = body.get("role", "swe")
+    question = str(body.get("question", "")).strip()[:2000]
+    draft = str(body.get("draft", "")).strip()[:4000]
+    if not draft:
+        return JSONResponse(status_code=400, content={"error": "draft_required"})
+
+    prompt_messages = [{
+        "role": "user",
+        "content": (
+            f"Role: {role}\n\n"
+            f"Interviewer question:\n{question or 'General technical interview question'}\n\n"
+            f"Candidate draft answer:\n{draft}\n\n"
+            "Rewrite this into a crisp, high-impact interview answer."
+        ),
+    }]
+    try:
+        rewritten = await complete_text(REWRITE_ANSWER_PROMPT, prompt_messages, 450)
+    except Exception:
+        return JSONResponse(status_code=502, content={"error": "rewrite_failed"})
+    return {"rewritten": rewritten.strip()}
 
 
 app.mount("/", StaticFiles(directory="app/static", html=True), name="static")

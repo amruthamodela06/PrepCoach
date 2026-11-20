@@ -132,6 +132,71 @@ button, textarea, input {
   letter-spacing: -0.01em;
   color: var(--text);
 }
+.brand-mark-btn {
+  pointer-events: auto;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+.brand-provider-pill {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+/* ---------- Top navigation actions ---------- */
+.top-nav-actions {
+  position: fixed;
+  top: 1rem;
+  right: 3.9rem;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.top-nav-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: border-color 0.15s, color 0.15s, background-color 0.15s;
+}
+.top-nav-pill:hover,
+.top-nav-pill.active {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.top-nav-cta {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.top-nav-cta:hover {
+  color: #fff;
+  filter: brightness(1.07);
+}
+.top-nav-count {
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  padding: 0.08rem 0.42rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+}
 
 /* ---------- Theme toggle ---------- */
 .theme-toggle {

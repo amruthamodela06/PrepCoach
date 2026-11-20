@@ -6,6 +6,7 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from app.prompts import (
+    HINT_SYSTEM_PROMPT,
     ROLE_FOCUS_TOPICS,
     SCORING_PROMPTS,
     _INTERVIEWER_STYLES,
@@ -293,6 +294,33 @@ async def score(req: Request):
     if data is None:
         return JSONResponse(status_code=502, content={"error": "scoring_failed"})
     return normalize_scorecard(data)
+
+
+@app.post("/hint")
+async def hint(req: Request):
+    body = await req.json()
+    role = body.get("role", "swe")
+    messages = body.get("messages", [])
+    last_assistant = next(
+        (m.get("content", "") for m in reversed(messages) if m.get("role") == "assistant"),
+        "",
+    )
+    if not last_assistant:
+        return JSONResponse(status_code=400, content={"error": "no_question_found"})
+
+    prompt_messages = [{
+        "role": "user",
+        "content": (
+            f"Role: {role}\n\n"
+            f"Current interviewer message:\n{last_assistant}\n\n"
+            "Provide a brief coaching hint for the candidate."
+        ),
+    }]
+    try:
+        hint_text = await complete_text(HINT_SYSTEM_PROMPT, prompt_messages, 250)
+    except Exception:
+        return JSONResponse(status_code=502, content={"error": "hint_failed"})
+    return {"hint": hint_text.strip()}
 
 
 app.mount("/", StaticFiles(directory="app/static", html=True), name="static")

@@ -201,3 +201,9 @@ SCORING_PROMPTS = {
     )
     for role, (label, dims) in _ROLE_CONTEXT.items()
 }
+
+HINT_SYSTEM_PROMPT = """You are an expert technical interview coach providing a brief conceptual nudge during a live mock interview.
+Given the latest interview question, provide:
+1. A 1-2 sentence conceptual hint or framework to structure the answer (e.g., STAR method, trade-off axes, bottleneck analysis).
+2. Two key concepts or dimensions the interviewer is looking for.
+Do NOT write out the full answer for the candidate. Keep the total response under 65 words, plain and direct."""

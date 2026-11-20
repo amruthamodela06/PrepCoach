@@ -63,6 +63,12 @@ _DIFFICULTY = {
         "questions, push on every weakness, and expect depth and precision.",
 }
 
+_INTERVIEWER_STYLES = {
+    "standard": "Adopt a balanced, direct industry interviewer persona: clear, objective, and focused on real-world trade-offs.",
+    "bar_raiser": "Adopt a tough Bar Raiser persona: challenge every assumption, drill into edge cases, scale limits, and metrics, and never accept high-level hand-waving.",
+    "mentor": "Adopt a constructive Senior Tech Lead persona: keep questions rigorous, but frame follow-ups to guide the candidate toward structured architectural thinking.",
+}
+
 # Server-side cap on pasted resume text (the frontend caps at 4000; don't
 # trust the client). Keeps a runaway paste from bloating every turn's tokens.
 _RESUME_MAX_CHARS = 6000
@@ -76,13 +82,14 @@ ROLE_FOCUS_TOPICS = {
 }
 
 
-def build_interview_system(role="swe", difficulty="medium", resume="", focus_topics=None):
-    """Compose the interviewer system prompt from role + difficulty + an
-    optional pasted resume and optional focus topics. Unknown role/difficulty
+def build_interview_system(role="swe", difficulty="medium", resume="", focus_topics=None, style="standard"):
+    """Compose the interviewer system prompt from role + difficulty + style +
+    an optional pasted resume and optional focus topics. Unknown role/difficulty
     fall back to defaults; an empty resume adds nothing."""
     parts = [
         SYSTEM_PROMPTS.get(role, SYSTEM_PROMPTS["swe"]),
         _DIFFICULTY.get(difficulty, _DIFFICULTY["medium"]),
+        _INTERVIEWER_STYLES.get(style, _INTERVIEWER_STYLES["standard"]),
     ]
     if focus_topics and isinstance(focus_topics, list):
         clean_topics = [str(t).strip()[:80] for t in focus_topics if str(t).strip()][:5]

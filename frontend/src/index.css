@@ -849,6 +849,119 @@ button, textarea, input {
   color: var(--text-muted);
   flex: 1;
   text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+}
+
+.interview-timer {
+  font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+}
+
+.interview-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.interview-progress-track {
+  width: 100%;
+  height: 4px;
+  background: var(--bg);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 0.35rem;
+}
+.interview-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  transition: width 0.4s ease;
+}
+
+.hint-card {
+  max-width: 86%;
+  background: var(--primary-light);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  animation: msg-in 0.2s ease both;
+}
+.hint-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+  color: var(--primary-dark);
+}
+.hint-close {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.15rem;
+  cursor: pointer;
+  line-height: 1;
+}
+.hint-card p {
+  margin: 0;
+  color: var(--text);
+}
+
+.draft-coach-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.85rem;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.draft-coach-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+.coach-chip {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.coach-chip.good {
+  background: var(--success-light);
+  border-color: var(--success);
+  color: var(--success);
+}
+.coach-chip.warn {
+  background: var(--warn-light);
+  border-color: var(--warn);
+  color: var(--warn);
+}
+.coach-polish-btn {
+  border: 1px solid var(--primary);
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+.coach-polish-btn:hover:not(:disabled) {
+  filter: brightness(0.96);
 }
 
 .transcript {

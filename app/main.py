@@ -5,7 +5,14 @@ from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
-from app.prompts import SCORING_PROMPTS, build_interview_system
+from app.prompts import (
+    ROLE_FOCUS_TOPICS,
+    SCORING_PROMPTS,
+    _INTERVIEWER_STYLES,
+    _ROLE_CONTEXT,
+    build_interview_system,
+)
+from app.question_bank import get_questions_for_role
 
 load_dotenv()
 
@@ -177,6 +184,32 @@ app = FastAPI()
 @app.get("/health")
 def health():
     return {"ok": True, "provider": PROVIDER, "model": MODEL}
+
+
+@app.get("/roles")
+def get_roles():
+    roles = []
+    for role_id, (label, dims) in _ROLE_CONTEXT.items():
+        roles.append({
+            "id": role_id,
+            "label": label.title(),
+            "dimensions": [d.strip() for d in dims.split(",")],
+            "focus_topics": ROLE_FOCUS_TOPICS.get(role_id, []),
+        })
+    return {
+        "roles": roles,
+        "styles": list(_INTERVIEWER_STYLES.keys()),
+        "difficulties": ["easy", "medium", "hard"],
+    }
+
+
+@app.get("/questions")
+def get_questions(role: str = "swe", difficulty: str = ""):
+    return {
+        "role": role,
+        "difficulty": difficulty or "all",
+        "questions": get_questions_for_role(role, difficulty or None),
+    }
 
 
 @app.post("/chat")

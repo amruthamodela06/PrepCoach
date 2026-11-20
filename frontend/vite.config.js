@@ -15,6 +15,8 @@ export default defineConfig({
       '/chat': 'http://127.0.0.1:8000',
       '/score': 'http://127.0.0.1:8000',
       '/health': 'http://127.0.0.1:8000',
+      '/roles': 'http://127.0.0.1:8000',
+      '/questions': 'http://127.0.0.1:8000',
     },
   },
 })

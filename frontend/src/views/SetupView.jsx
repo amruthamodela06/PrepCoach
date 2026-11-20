@@ -1,4 +1,8 @@
+import { ROLE_FOCUS_TOPICS, STYLE_LABELS } from '../lib/report'
+import ResumeReadinessCard from '../components/ResumeReadinessCard'
+
 const RESUME_LIMIT = 4000
+const COMPANY_LIMIT = 2000
 
 const ROLES = [
   {
@@ -29,18 +33,43 @@ const ROLES = [
       </svg>
     ),
   },
+  {
+    id: 'devops',
+    name: 'DevOps / SRE',
+    icon: (
+      <svg viewBox="0 0 24 24" width="22" height="22">
+        <path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
+      </svg>
+    ),
+  },
+  {
+    id: 'security',
+    name: 'Security Engineer',
+    icon: (
+      <svg viewBox="0 0 24 24" width="22" height="22">
+        <path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+      </svg>
+    ),
+  },
 ]
 
 const DIFFICULTIES = ['easy', 'medium', 'hard']
+const STYLES = ['standard', 'bar_raiser', 'mentor']
 
 export default function SetupView({
   role,
   difficulty,
+  style = 'standard',
+  focusTopics = [],
+  companyContext = '',
   resume,
   voiceMode,
   voiceSupported,
   onSelectRole,
   onSelectDifficulty,
+  onSelectStyle,
+  onToggleFocusTopic,
+  onCompanyContextChange,
   onResumeChange,
   onVoiceToggle,
   onStart,
@@ -48,6 +77,7 @@ export default function SetupView({
   const resumeLen = resume.length
   const resumeTooLong = resumeLen >= RESUME_LIMIT
   const startDisabled = !role || resumeTooLong
+  const availableTopics = role ? ROLE_FOCUS_TOPICS[role] || [] : []
 
   return (
     <section className="view" id="setup-view">
@@ -92,6 +122,62 @@ export default function SetupView({
           </div>
         </div>
 
+        <div className="field-group">
+          <label className="field-label" id="style-label">Interviewer Style</label>
+          <div className="segmented" role="radiogroup" aria-labelledby="style-label">
+            {STYLES.map((s) => (
+              <button
+                key={s}
+                type="button"
+                className={`segment segment-sm${style === s ? ' active' : ''}`}
+                aria-pressed={style === s}
+                onClick={() => onSelectStyle?.(s)}
+              >
+                {STYLE_LABELS[s]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {availableTopics.length > 0 && (
+          <div className="field-group">
+            <label className="field-label">
+              Focus Topics <span className="optional-tag">optional</span>
+            </label>
+            <div className="topic-chips">
+              {availableTopics.map((topic) => {
+                const selected = focusTopics.includes(topic)
+                return (
+                  <button
+                    key={topic}
+                    type="button"
+                    className={`topic-chip${selected ? ' active' : ''}`}
+                    aria-pressed={selected}
+                    onClick={() => onToggleFocusTopic?.(topic)}
+                  >
+                    {topic}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        <details className="field-group resume-details">
+          <summary>Target Company or Job Description <span className="optional-tag">optional</span></summary>
+          <textarea
+            id="company-input"
+            className="setup-textarea-sm"
+            placeholder="e.g. Stripe Backend Infrastructure team — high-throughput payment APIs, distributed idempotency, strict SLOs."
+            maxLength={COMPANY_LIMIT}
+            value={companyContext}
+            onChange={(e) => onCompanyContextChange?.(e.target.value)}
+          />
+          <div className="resume-meta">
+            <span className="resume-count">{companyContext.length} / {COMPANY_LIMIT}</span>
+          </div>
+        </details>
+
         <details className="field-group resume-details">
           <summary>Personalize with your resume <span className="optional-tag">optional</span></summary>
           <textarea
@@ -107,6 +193,7 @@ export default function SetupView({
               That's too long — trim your resume to 4000 characters to continue.
             </span>
           </div>
+          <ResumeReadinessCard role={role} resume={resume} />
         </details>
 
         {voiceSupported && (

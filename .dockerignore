@@ -10,3 +10,7 @@ __pycache__/
 prompts-log.md
 Dockerfile
 .dockerignore
+frontend/node_modules/
+tests/
+docs/
+README.md

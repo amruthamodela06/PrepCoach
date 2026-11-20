@@ -161,7 +161,8 @@ def derive_band(score):
 
 
 def normalize_scorecard(data):
-    """Clamp overall_score to 0-100 and force band to match it.
+    """Clamp overall_score and dimension scores to 0-100, force band to match,
+    and annotate strongest/weakest dimensions.
 
     Leaves the payload untouched if overall_score is missing or unusable —
     the frontend is expected to render partial data gracefully.
@@ -175,6 +176,25 @@ def normalize_scorecard(data):
     score = max(0, min(100, score))
     data["overall_score"] = score
     data["band"] = derive_band(score)
+
+    dims = data.get("dimensions")
+    if isinstance(dims, list) and dims:
+        valid_dims = []
+        for d in dims:
+            if not isinstance(d, dict):
+                continue
+            try:
+                d_score = max(0, min(100, int(d.get("score"))))
+                d["score"] = d_score
+                d["band"] = derive_band(d_score)
+                valid_dims.append(d)
+            except (TypeError, ValueError):
+                continue
+        if valid_dims:
+            strongest = max(valid_dims, key=lambda x: x["score"])
+            weakest = min(valid_dims, key=lambda x: x["score"])
+            data["strongest_dimension"] = strongest.get("name")
+            data["weakest_dimension"] = weakest.get("name")
     return data
 
 

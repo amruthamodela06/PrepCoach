@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { streamChat } from '../lib/api'
+import { fetchHint, streamChat } from '../lib/api'
 import { splitAssistantMessage, bulletsFromBlock, stripMarkdownForSpeech } from '../lib/feedback'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
 import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis'
+import { useTimer } from '../hooks/useTimer'
 import { useUi } from '../context/UiContext'
-import { ROLE_LABELS } from '../lib/report'
+import { ROLE_LABELS, STYLE_LABELS } from '../lib/report'
+import DraftCoachBar from '../components/DraftCoachBar'
 
 const TOTAL_QUESTIONS = 5
+const SPEECH_RATES = [0.9, 1, 1.15, 1.25]
 
 function nextAssistantIndex(messages) {
   return messages.filter((m) => m.role === 'assistant').length + 1
@@ -16,7 +19,17 @@ function questionNumberFor(assistantIndex) {
   return Math.min(TOTAL_QUESTIONS, Math.ceil(assistantIndex / 2))
 }
 
-export default function InterviewView({ role, difficulty, resume, voiceMode, onComplete, onNewInterview }) {
+export default function InterviewView({
+  role,
+  difficulty,
+  style = 'standard',
+  focusTopics = [],
+  companyContext = '',
+  resume,
+  voiceMode,
+  onComplete,
+  onNewInterview,
+}) {
   const { toast, confirm } = useUi()
 
   const [messages, setMessages] = useState([])
@@ -24,6 +37,8 @@ export default function InterviewView({ role, difficulty, resume, voiceMode, onC
   const [waitingForFirstToken, setWaitingForFirstToken] = useState(false)
   const [streamingText, setStreamingText] = useState(null)
   const [streamError, setStreamError] = useState(false)
+  const [currentHint, setCurrentHint] = useState(null)
+  const [loadingHint, setLoadingHint] = useState(false)
 
   const transcriptRef = useRef(null)
   const textareaRef = useRef(null)
@@ -50,7 +65,8 @@ export default function InterviewView({ role, difficulty, resume, voiceMode, onC
       }
     },
   })
-  const synth = useSpeechSynthesis()
+  const synth = useSpeechSynthesis(1)
+  const timer = useTimer(true)
 
   const streaming = waitingForFirstToken || streamingText !== null
   const inputEnabled = !streaming
@@ -58,7 +74,7 @@ export default function InterviewView({ role, difficulty, resume, voiceMode, onC
   useEffect(() => {
     const t = transcriptRef.current
     if (t) t.scrollTop = t.scrollHeight
-  }, [messages, streamingText, waitingForFirstToken, streamError])
+  }, [messages, streamingText, waitingForFirstToken, streamError, currentHint])
 
   useEffect(() => {
     const ta = textareaRef.current
@@ -69,6 +85,7 @@ export default function InterviewView({ role, difficulty, resume, voiceMode, onC
 
   async function runAssistantTurn(currentMessages) {
     setStreamError(false)
+    setCurrentHint(null)
     setWaitingForFirstToken(true)
     setStreamingText(null)
 
@@ -78,6 +95,9 @@ export default function InterviewView({ role, difficulty, resume, voiceMode, onC
         role,
         difficulty,
         resume,
+        focusTopics,
+        style,
+        companyContext,
         messages: currentMessages,
         onToken: (accumulated) => {
           if (firstToken) {
@@ -92,6 +112,7 @@ export default function InterviewView({ role, difficulty, resume, voiceMode, onC
       setMessages(updated)
       setStreamingText(null)
       setWaitingForFirstToken(false)
+      timer.resetTurn()
 
       if (voiceMode) synth.speak(stripMarkdownForSpeech(full))
 
@@ -121,6 +142,7 @@ export default function InterviewView({ role, difficulty, resume, voiceMode, onC
     if (recognition.listening) recognition.stop()
     baseTextRef.current = ''
     setInputValue('')
+    setCurrentHint(null)
     const updated = [...messagesRef.current, { role: 'user', content: text }]
     setMessages(updated)
     runAssistantTurn(updated)
@@ -129,6 +151,30 @@ export default function InterviewView({ role, difficulty, resume, voiceMode, onC
   function retry() {
     setStreamError(false)
     runAssistantTurn(messagesRef.current)
+  }
+
+  async function handleRequestHint() {
+    if (loadingHint || streaming || messagesRef.current.length < 2) return
+    setLoadingHint(true)
+    try {
+      const res = await fetchHint({ role, messages: messagesRef.current })
+      if (res?.hint) {
+        setCurrentHint(res.hint)
+      }
+    } catch {
+      toast('Could not load a coaching hint right now')
+    } finally {
+      setLoadingHint(false)
+    }
+  }
+
+  async function handleFinishEarly() {
+    const ok = await confirm('Finish the interview now and generate your scorecard from the answers so far?')
+    if (ok) {
+      synth.stop()
+      if (recognition.listening) recognition.stop()
+      onComplete(messagesRef.current)
+    }
   }
 
   async function handleNewInterview() {
@@ -140,18 +186,72 @@ export default function InterviewView({ role, difficulty, resume, voiceMode, onC
     }
   }
 
+  const assistantCount = messages.filter((m) => m.role === 'assistant').length
+  const userAnswerCount = Math.max(0, messages.filter((m) => m.role === 'user').length - 1)
   const questionNumber = questionNumberFor(nextAssistantIndex(messages))
+  const progressPct = Math.min(100, Math.round((assistantCount / (TOTAL_QUESTIONS * 2)) * 100))
   const renderableMessages = messages.slice(1) // skip the hidden kickoff turn
+  const lastAssistantQuestion =
+    [...messages].reverse().find((m) => m.role === 'assistant')?.content || ''
 
   return (
     <section className="view" id="interview-view">
       <header className="interview-header">
         <div className="header-badges">
-          <span className="badge">{ROLE_LABELS[role]}</span>
+          <span className="badge">{ROLE_LABELS[role] || role}</span>
           <span className="badge badge-outline">{difficulty[0].toUpperCase() + difficulty.slice(1)}</span>
+          {style && style !== 'standard' && (
+            <span className="badge badge-outline">{STYLE_LABELS[style] || style}</span>
+          )}
         </div>
-        <div className="question-counter">Question {questionNumber} of {TOTAL_QUESTIONS}</div>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={handleNewInterview}>New Interview</button>
+        <div className="question-counter">
+          <span>Question {questionNumber} of {TOTAL_QUESTIONS}</span>
+          <span className="interview-timer" title="Elapsed session time">
+            ⏱ {timer.formattedElapsed}
+          </span>
+        </div>
+        <div className="interview-header-actions">
+          {voiceMode && synth.supported && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              title="Cycle interviewer voice speed"
+              onClick={() => {
+                const idx = SPEECH_RATES.indexOf(synth.rate)
+                const next = SPEECH_RATES[(idx + 1) % SPEECH_RATES.length]
+                synth.setRate(next)
+                toast(`Voice speed: ${next}x`)
+              }}
+            >
+              {synth.rate}x
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            disabled={!inputEnabled || loadingHint || assistantCount === 0}
+            onClick={handleRequestHint}
+            title="Get a conceptual nudge without spoiling the answer"
+          >
+            {loadingHint ? 'Hint…' : '💡 Hint'}
+          </button>
+          {userAnswerCount >= 2 && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              disabled={!inputEnabled}
+              onClick={handleFinishEarly}
+            >
+              Score Now
+            </button>
+          )}
+          <button type="button" className="btn btn-ghost btn-sm" onClick={handleNewInterview}>
+            New Interview
+          </button>
+        </div>
+        <div className="interview-progress-track" aria-hidden="true">
+          <div className="interview-progress-fill" style={{ width: `${progressPct}%` }} />
+        </div>
       </header>
 
       <div className="transcript" ref={transcriptRef} aria-live="polite">
@@ -163,6 +263,18 @@ export default function InterviewView({ role, difficulty, resume, voiceMode, onC
           ) : (
             <AssistantTurn key={i} text={m.content} />
           )
+        )}
+
+        {currentHint && (
+          <div className="hint-card">
+            <div className="hint-card-header">
+              <strong>💡 Coaching Hint</strong>
+              <button type="button" className="hint-close" onClick={() => setCurrentHint(null)} aria-label="Dismiss hint">
+                &times;
+              </button>
+            </div>
+            <p>{currentHint}</p>
+          </div>
         )}
 
         {waitingForFirstToken && (
@@ -188,6 +300,17 @@ export default function InterviewView({ role, difficulty, resume, voiceMode, onC
           </div>
         )}
       </div>
+
+      <DraftCoachBar
+        role={role}
+        currentQuestion={lastAssistantQuestion}
+        draftText={inputValue}
+        disabled={!inputEnabled}
+        onReplaceDraft={(polished) => {
+          baseTextRef.current = polished
+          setInputValue(polished)
+        }}
+      />
 
       <form
         className="input-bar"

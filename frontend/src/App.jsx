@@ -4,6 +4,7 @@ import { useTheme } from './hooks/useTheme'
 import { useInterviewHistory } from './hooks/useInterviewHistory'
 import { useBookmarks } from './hooks/useBookmarks'
 import { fetchHealth } from './lib/api'
+import { loadPrefs, savePrefs } from './lib/storage'
 import ThemeToggle from './components/ThemeToggle'
 import BrandMark from './components/BrandMark'
 import TopNavActions from './components/TopNavActions'
@@ -24,13 +25,13 @@ function AppShell() {
   const { bookmarks, toggleBookmark, isBookmarked } = useBookmarks()
 
   const [view, setView] = useState('landing')
-  const [role, setRole] = useState(null)
-  const [difficulty, setDifficulty] = useState('medium')
-  const [style, setStyle] = useState('standard')
+  const [role, setRole] = useState(() => loadPrefs().role || null)
+  const [difficulty, setDifficulty] = useState(() => loadPrefs().difficulty || 'medium')
+  const [style, setStyle] = useState(() => loadPrefs().style || 'standard')
   const [focusTopics, setFocusTopics] = useState([])
   const [companyContext, setCompanyContext] = useState('')
   const [resume, setResume] = useState('')
-  const [voiceMode, setVoiceMode] = useState(false)
+  const [voiceMode, setVoiceMode] = useState(() => !!loadPrefs().voiceMode)
   const [messages, setMessages] = useState([])
   const [scorecard, setScorecard] = useState(null)
   const [prevScorecard, setPrevScorecard] = useState(null)
@@ -42,6 +43,10 @@ function AppShell() {
       .then((info) => setProviderInfo(info))
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    savePrefs({ role, difficulty, style, voiceMode })
+  }, [role, difficulty, style, voiceMode])
 
   function handleSelectRole(nextRole) {
     setRole(nextRole)

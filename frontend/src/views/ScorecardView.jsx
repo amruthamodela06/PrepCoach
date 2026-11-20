@@ -259,7 +259,14 @@ export default function ScorecardView({
             disabled={exporting}
             onClick={handleDownloadMarkdown}
           >
-            {exporting ? 'Exporting…' : 'Download Study Guide (.md)'}
+            {exporting ? 'Exporting…' : 'Download (.md)'}
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => window.print()}
+          >
+            Print / PDF
           </button>
           <button type="button" className="btn btn-primary" onClick={() => onRetake(data)}>
             Retake interview

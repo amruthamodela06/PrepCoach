@@ -168,6 +168,18 @@ export default function InterviewView({
     }
   }
 
+  useEffect(() => {
+    function onKeyDown(e) {
+      if (e.altKey && (e.key === 'h' || e.key === 'H')) {
+        e.preventDefault()
+        handleRequestHint()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadingHint, streaming, role])
+
   async function handleFinishEarly() {
     const ok = await confirm('Finish the interview now and generate your scorecard from the answers so far?')
     if (ok) {
@@ -231,7 +243,7 @@ export default function InterviewView({
             className="btn btn-ghost btn-sm"
             disabled={!inputEnabled || loadingHint || assistantCount === 0}
             onClick={handleRequestHint}
-            title="Get a conceptual nudge without spoiling the answer"
+            title="Get a conceptual nudge without spoiling the answer (Alt+H)"
           >
             {loadingHint ? 'Hint…' : '💡 Hint'}
           </button>

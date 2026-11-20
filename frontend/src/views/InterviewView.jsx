@@ -189,6 +189,20 @@ export default function InterviewView({
     }
   }
 
+  async function handleCopyTranscript() {
+    const turns = messagesRef.current.slice(1)
+    if (!turns.length) return
+    const text = turns
+      .map((m) => `${m.role === 'assistant' ? 'Interviewer' : 'Candidate'}: ${m.content}`)
+      .join('\n\n')
+    try {
+      await navigator.clipboard.writeText(text)
+      toast('Transcript copied to clipboard')
+    } catch {
+      toast('Could not copy transcript')
+    }
+  }
+
   async function handleNewInterview() {
     const ok = await confirm('Start a new interview? Your current progress will be lost.')
     if (ok) {
@@ -247,6 +261,16 @@ export default function InterviewView({
           >
             {loadingHint ? 'Hint…' : '💡 Hint'}
           </button>
+          {userAnswerCount >= 1 && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={handleCopyTranscript}
+              title="Copy interview transcript so far"
+            >
+              Copy
+            </button>
+          )}
           {userAnswerCount >= 2 && (
             <button
               type="button"

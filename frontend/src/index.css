@@ -1789,3 +1789,25 @@ button, textarea, input {
 @media (min-width: 481px) {
   .transcript { padding: 1.5rem 1.5rem; }
 }
+
+@media print {
+  .brand-mark,
+  .theme-toggle,
+  .top-nav-actions,
+  .scorecard-actions,
+  .bookmark-btn,
+  .toast-container,
+  .overlay {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .scorecard-hero,
+  .scorecard-section {
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+    break-inside: avoid;
+  }
+}

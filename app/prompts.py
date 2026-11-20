@@ -40,6 +40,14 @@ SYSTEM_PROMPTS = {
     "pm": _BASE + "\n\nYou are a group PM interviewing for an APM role. "
         "Cover product sense, prioritization, and metrics. Probe for "
         "structured thinking, not buzzwords.",
+    "devops": _BASE + "\n\nYou are a principal SRE / DevOps architect "
+        "interviewing a cloud & reliability engineer candidate. Cover "
+        "CI/CD pipelines, Kubernetes/containers, observability, incident "
+        "response, and infrastructure-as-code trade-offs.",
+    "security": _BASE + "\n\nYou are a principal security engineer "
+        "interviewing an application & cloud security candidate. Cover "
+        "threat modeling, OWASP vulnerabilities, authentication/authorization, "
+        "and incident containment.",
 }
 
 
@@ -130,6 +138,14 @@ _ROLE_CONTEXT = {
     "pm": (
         "product management",
         "Product Sense, Prioritization, Communication, Structured Thinking",
+    ),
+    "devops": (
+        "DevOps and site reliability engineering",
+        "Cloud Architecture, Reliability & Observability, Communication, Incident Response",
+    ),
+    "security": (
+        "cybersecurity engineering",
+        "Threat Modeling, Application Security, Communication, Incident Handling",
     ),
 }
 

@@ -33,6 +33,7 @@ export default function PracticeBankView({
   const { toast } = useUi()
   const [role, setRole] = useState(initialRole || 'swe')
   const [difficulty, setDifficulty] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
   const [questions, setQuestions] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeDraftId, setActiveDraftId] = useState(null)
@@ -118,13 +119,33 @@ export default function PracticeBankView({
               </button>
             ))}
           </div>
+
+          <input
+            type="search"
+            className="practice-search-input"
+            placeholder="Filter questions by keyword or topic (e.g. Redis, pagination, SLO, JWT)…"
+            aria-label="Filter questions by keyword"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
 
         {loading ? (
           <div className="practice-empty">Loading curated questions…</div>
         ) : (
           <div className="practice-list">
-            {questions.map((q) => {
+            {questions
+              .filter((q) => {
+                const needle = searchQuery.trim().toLowerCase()
+                if (!needle) return true
+                return (
+                  (q.question || '').toLowerCase().includes(needle) ||
+                  (q.topic || '').toLowerCase().includes(needle) ||
+                  (Array.isArray(q.key_points) &&
+                    q.key_points.some((pt) => pt.toLowerCase().includes(needle)))
+                )
+              })
+              .map((q) => {
               const saved = isBookmarked?.(q.question)
               const draftText = drafts[q.id] || ''
               const metrics = analyzeDraftAnswer(draftText)

@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
+from app.analytics import compute_transcript_metrics
 from app.prompts import (
     HINT_SYSTEM_PROMPT,
     RESUME_ANALYSIS_PROMPT,
@@ -314,7 +315,10 @@ async def score(req: Request):
     data = parse_scorecard(raw)
     if data is None:
         return JSONResponse(status_code=502, content={"error": "scoring_failed"})
-    return normalize_scorecard(data)
+    normalized = normalize_scorecard(data)
+    if isinstance(normalized, dict):
+        normalized["transcript_metrics"] = compute_transcript_metrics(messages)
+    return normalized
 
 
 @app.post("/hint")

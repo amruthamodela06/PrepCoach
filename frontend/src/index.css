@@ -1500,6 +1500,21 @@ button, textarea, input {
   color: var(--primary-dark);
 }
 
+.practice-search-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.9rem;
+  font-size: 0.9rem;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+.practice-search-input:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
 .practice-list,
 .history-list {
   display: flex;

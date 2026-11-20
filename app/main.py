@@ -122,6 +122,21 @@ def format_transcript(messages):
     return "\n\n".join(lines)
 
 
+def sanitize_messages(raw_messages):
+    """Filter and sanitize client messages to valid user/assistant turns."""
+    if not isinstance(raw_messages, list):
+        return []
+    cleaned = []
+    for m in raw_messages[:60]:
+        if not isinstance(m, dict):
+            continue
+        role = m.get("role")
+        content = str(m.get("content", "")).strip()
+        if role in ("user", "assistant") and content:
+            cleaned.append({"role": role, "content": content[:8000]})
+    return cleaned
+
+
 def strip_json_fences(text):
     """Best-effort recovery of a JSON object from a fenced/prose-wrapped reply."""
     t = text.strip()
@@ -242,7 +257,9 @@ async def chat(req: Request):
     focus_topics = body.get("focus_topics")
     style = body.get("style", "standard")
     company_context = body.get("company_context", "")
-    messages = body.get("messages", [])
+    messages = sanitize_messages(body.get("messages", []))
+    if not messages:
+        return JSONResponse(status_code=400, content={"error": "messages_required"})
     system = build_interview_system(
         role=role,
         difficulty=difficulty,
@@ -271,7 +288,9 @@ async def chat(req: Request):
 async def score(req: Request):
     body = await req.json()
     role = body.get("role", "swe")
-    messages = body.get("messages", [])
+    messages = sanitize_messages(body.get("messages", []))
+    if not messages:
+        return JSONResponse(status_code=400, content={"error": "messages_required"})
     system = SCORING_PROMPTS.get(role, SCORING_PROMPTS["swe"])
 
     # Pass the transcript as one user turn so the request is a clean

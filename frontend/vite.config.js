@@ -19,6 +19,7 @@ export default defineConfig({
       '/questions': 'http://127.0.0.1:8000',
       '/hint': 'http://127.0.0.1:8000',
       '/rewrite-answer': 'http://127.0.0.1:8000',
+      '/analyze-resume': 'http://127.0.0.1:8000',
     },
   },
 })

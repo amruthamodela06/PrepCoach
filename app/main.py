@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from app.prompts import (
     HINT_SYSTEM_PROMPT,
+    RESUME_ANALYSIS_PROMPT,
     REWRITE_ANSWER_PROMPT,
     ROLE_FOCUS_TOPICS,
     SCORING_PROMPTS,
@@ -366,6 +367,33 @@ async def rewrite_answer(req: Request):
     except Exception:
         return JSONResponse(status_code=502, content={"error": "rewrite_failed"})
     return {"rewritten": rewritten.strip()}
+
+
+@app.post("/analyze-resume")
+async def analyze_resume(req: Request):
+    body = await req.json()
+    role = body.get("role", "swe")
+    resume = str(body.get("resume", "")).strip()[:6000]
+    if len(resume) < 30:
+        return JSONResponse(status_code=400, content={"error": "resume_too_short"})
+
+    role_label = _ROLE_CONTEXT.get(role, _ROLE_CONTEXT["swe"])[0]
+    prompt_messages = [{
+        "role": "user",
+        "content": (
+            f"Target role: {role_label}\n\n"
+            f"Candidate resume:\n{resume}\n\n"
+            "Analyze this resume now and output only the JSON object."
+        ),
+    }]
+    try:
+        raw = await complete_text(RESUME_ANALYSIS_PROMPT, prompt_messages, 700)
+    except Exception:
+        return JSONResponse(status_code=502, content={"error": "analysis_failed"})
+    parsed = parse_scorecard(raw)
+    if not isinstance(parsed, dict):
+        return JSONResponse(status_code=502, content={"error": "analysis_failed"})
+    return parsed
 
 
 app.mount("/", StaticFiles(directory="app/static", html=True), name="static")

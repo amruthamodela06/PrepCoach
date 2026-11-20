@@ -218,8 +218,18 @@ async def chat(req: Request):
     role = body.get("role", "swe")
     difficulty = body.get("difficulty", "medium")
     resume = body.get("resume", "")
+    focus_topics = body.get("focus_topics")
+    style = body.get("style", "standard")
+    company_context = body.get("company_context", "")
     messages = body.get("messages", [])
-    system = build_interview_system(role, difficulty, resume)
+    system = build_interview_system(
+        role=role,
+        difficulty=difficulty,
+        resume=resume,
+        focus_topics=focus_topics,
+        style=style,
+        company_context=company_context,
+    )
 
     async def gen():
         try:
